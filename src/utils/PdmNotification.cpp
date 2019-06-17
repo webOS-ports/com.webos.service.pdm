@@ -21,7 +21,7 @@
 #include "LunaIPC.h"
 #include "Common.h"
 
-bool Notification::mNotifyMgrEnable = true;
+bool Notification::mNotifyMgrEnable = false;
 
 // Active alerts
 static std::unordered_map<std::string, std::string> alerts;
