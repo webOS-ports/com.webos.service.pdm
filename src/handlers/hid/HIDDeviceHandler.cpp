@@ -95,6 +95,10 @@ void HIDDeviceHandler::ProcessHIDDevice(DeviceClass* devClass){
                        m_deviceRemoved = true;
                     }
                     break;
+                case DeviceActions::USB_DEV_BIND:
+                    PDM_LOG_INFO("HIDDeviceHandler:",0,"%s line: %d Action BIND", __FUNCTION__,__LINE__);
+                    //Do nothing
+                    break;
                 default:
                     PDM_LOG_DEBUG("HIDDeviceHandler: %s line: %d ACTION NOT found", __FUNCTION__, __LINE__);
                 //Do nothing

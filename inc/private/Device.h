@@ -27,7 +27,7 @@
 
 enum DeviceSpeed { FULL = 12, HIGH = 480, SUPER = 5000};
 
-enum DeviceActions {USB_DEV_ADD =0, USB_DEV_REMOVE, USB_DEV_CHANGE};
+enum DeviceActions {USB_DEV_ADD =0, USB_DEV_REMOVE, USB_DEV_CHANGE, USB_DEV_BIND};
 enum UsbDeviceTypes {TYPE_DEV_USB =0, TYPE_DEV_DISK, TYPE_DEV_PARTITION};
 
 // Map to associate storage device type with the UsbDeviceTypes enum values
@@ -41,7 +41,8 @@ static std::map<std::string, UsbDeviceTypes> sMapUsbDeviceType= {
 static std::map<std::string, DeviceActions> sMapDeviceActions= {
     {"add",     USB_DEV_ADD},
     {"remove",  USB_DEV_REMOVE},
-    {"change",  USB_DEV_CHANGE}
+    {"change",  USB_DEV_CHANGE},
+    {"bind",  USB_DEV_BIND}
 };
 
 class Device : public IDevice {
