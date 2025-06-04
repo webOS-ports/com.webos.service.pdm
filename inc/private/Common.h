@@ -32,7 +32,6 @@ enum DeviceEventType { STORAGE_DEVICE = 0,
                        PTP_DEVICE,
                        BLUETOOTH_DEVICE,
                        CDC_DEVICE,
-                       AUTO_ANDROID_DEVICE,
                        NFC_DEVICE,
                        UNKNOWN_DEVICE
                      };
