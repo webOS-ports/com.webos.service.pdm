@@ -58,5 +58,31 @@ std::string SoundSubsystem::getCardName()
 
 std::string SoundSubsystem::getCardNumber()
 {
-	return mDevPropMap[CARD_NUMBER];
+	std::string cardNumber = mDevPropMap[CARD_NUMBER];
+	if (!cardNumber.empty())
+		return cardNumber;
+
+	/* Only USB sound devices carry a CARD_NUMBER property. For a platform
+	 * card udev exposes the number as a sysfs attribute instead, so this
+	 * lookup comes back empty and SoundDevice keeps its default of 0 -
+	 * every built-in card is then reported as card 0. That is harmless on a
+	 * board whose only card really is 0, but where it is not, audiod asks
+	 * PulseAudio to open the wrong hw: device and playback never starts.
+	 *
+	 * DEVPATH already ends in the card node, e.g.
+	 *   /devices/platform/rk817-sound/sound/card1
+	 * so recover the number from there rather than reading sysfs again.
+	 */
+	const std::string &devPath = mDevPropMap[DEVPATH];
+	const std::size_t cardPos = devPath.rfind("/card");
+	if (cardPos != std::string::npos) {
+		std::size_t start = cardPos + 5;
+		std::size_t end = start;
+		while (end < devPath.size() && devPath[end] >= '0' && devPath[end] <= '9')
+			++end;
+		if (end > start)
+			cardNumber = devPath.substr(start, end - start);
+	}
+
+	return cardNumber;
 }
