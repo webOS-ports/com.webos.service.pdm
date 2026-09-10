@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool PTPSubsystem::mIsObjRegistered = PTPSubsystem::RegisterSubSystem();
 
 PTPSubsystem::PTPSubsystem(std::unordered_map<std::string, std::string> &devPropMap)
-    : mDevType("ptp"), DeviceClass(devPropMap)
+    : DeviceClass(devPropMap), mDevType("ptp")
 {
     for (auto &prop : devPropMap)
         mDevPropMap[prop.first] = prop.second;

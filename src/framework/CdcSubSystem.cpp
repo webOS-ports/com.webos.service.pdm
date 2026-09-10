@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool CdcSubSystem::mIsObjRegistered = CdcSubSystem::RegisterSubSystem();
 
 CdcSubSystem::CdcSubSystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("cdc"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("cdc")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

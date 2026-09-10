@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool BluetoothSubSystem::mIsObjRegistered = BluetoothSubSystem::RegisterSubSystem();
 
 BluetoothSubSystem::BluetoothSubSystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("bluetooth"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("bluetooth")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

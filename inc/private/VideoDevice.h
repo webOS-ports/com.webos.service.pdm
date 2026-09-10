@@ -32,8 +32,8 @@ private:
 
 public:
     VideoSubDevice(std::string devName, std::string capabilities, std::string productName, std::string version)
-        : m_devPath("/dev/"+devName),
-        m_capabilities(capabilities),
+        : m_capabilities(capabilities),
+        m_devPath("/dev/"+devName),
         m_productName(productName),
         m_version(version) {
     };

@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool SoundSubsystem::mIsObjRegistered = SoundSubsystem::RegisterSubSystem();
 
 SoundSubsystem::SoundSubsystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("sound"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("sound")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

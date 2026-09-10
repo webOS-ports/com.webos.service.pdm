@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool NfcSubsystem::mIsObjRegistered = NfcSubsystem::RegisterSubSystem();
 
 NfcSubsystem::NfcSubsystem(std::unordered_map<std::string, std::string> &devPropMap)
-    : mDevType("nfc"), DeviceClass(devPropMap)
+    : DeviceClass(devPropMap), mDevType("nfc")
 {
     for (auto &prop : devPropMap)
         mDevPropMap[prop.first] = prop.second;

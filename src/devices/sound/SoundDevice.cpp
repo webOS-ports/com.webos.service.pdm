@@ -23,11 +23,11 @@ using namespace PdmDevAttributes;
 
 SoundDevice::SoundDevice(PdmConfig* const pConfObj, PluginAdapter* const pluginAdapter)
                          :Device(pConfObj, pluginAdapter,  "SOUND", PDM_ERR_NOTHING)
+                          , m_builtIn(true)
                           , m_cardName("")
                           , m_cardNumber(0)
                           , m_soundDeviceName("")
                           , m_cardId("")
-                          , m_builtIn(true)
 {
 
 }
