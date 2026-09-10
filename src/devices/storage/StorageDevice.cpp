@@ -172,7 +172,7 @@ void StorageDevice::updateDiskInfo(DeviceClass* devClass)
     StorageSubsystem* storageSubSystem = (StorageSubsystem*)devClass;
 
     PDM_LOG_DEBUG("StorageDevice:%s line: %d ACTION = %s", __FUNCTION__, __LINE__, devClass->getAction().c_str());
-    switch(sMapDeviceActions[devClass->getAction()])
+    switch(getDeviceAction(devClass->getAction()))
     {
         case DeviceActions::USB_DEV_ADD:
             m_deviceName = devClass->getDevName();

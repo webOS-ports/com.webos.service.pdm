@@ -79,7 +79,7 @@ void VideoDevice::updateDeviceInfo(DeviceClass* devClassPtr)
         }
 
         VideoSubDevice* subDevice = getSubDevice("/dev/" + devClassPtr->getDevName());
-        switch (sMapDeviceActions[devClassPtr->getAction()]) {
+        switch (getDeviceAction(devClassPtr->getAction())) {
             case DeviceActions::USB_DEV_ADD:
                 if (!devClassPtr->getDevName().empty()) {
                     if (subDevice) {
