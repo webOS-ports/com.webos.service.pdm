@@ -52,7 +52,7 @@ bool LunaIPC::init(GMainLoop *mainLoop,CommandManager *pCommandManager)
 #ifdef WEBOS_SESSION
         mServiceCPPHandle = mPdmService->get_LSCPPHandle();
 #endif
-        PDM_LOG_DEBUG("LunaIPC: %s line: %d mServiceHandle =%p", __FUNCTION__, __LINE__,mServiceHandle);
+        PDM_LOG_DEBUG("LunaIPC: %s line: %d mServiceHandle =%p", __FUNCTION__, __LINE__,static_cast<void *>(mServiceHandle));
     }
     return retVal;
 }

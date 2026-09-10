@@ -69,12 +69,12 @@ void DeviceClassFactory::parseDevProps(struct udev_device* device, bool isPowerO
 
 DeviceClass* DeviceClassFactory::create(struct udev_device* device, bool isPowerOnConnect)
 {
-    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %d", __FUNCTION__, __LINE__, mDevMap.size());
+    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
     parseDevProps(device, isPowerOnConnect);
-    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %d", __FUNCTION__, __LINE__, mDevMap.size());
+    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
     DeviceClass* subDevClasPtr;
 
-    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %d", __FUNCTION__, __LINE__, mDevMap.size());
+    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
 
     for (auto const& dev : mDevMap) {
         subDevClasPtr = mDevMap[dev.first](mDevProMap);
@@ -85,7 +85,7 @@ DeviceClass* DeviceClassFactory::create(struct udev_device* device, bool isPower
 
     if (mDevMap.size() > 0) {
         subDevClasPtr = mDevMap["default"](mDevProMap);
-        PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %d", __FUNCTION__, __LINE__, mDevMap.size());
+        PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
     }
 
     PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d", __FUNCTION__, __LINE__);

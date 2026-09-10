@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <cinttypes>
 #include <experimental/filesystem>
 
 #include "Common.h"
@@ -253,7 +254,7 @@ bool PdmFs::calculateSpaceInfo(const std::string &mountName, SpaceInfo *spaceInf
          spaceInfo->usedSize = spaceInfo->driveSize - spaceInfo->freeSize;
      if (spaceInfo->driveSize)
          spaceInfo->usedRate = spaceInfo->usedSize * 100 / spaceInfo->driveSize;
-    PDM_LOG_DEBUG("PdmFs:%s line: %d DriveSize : %llu KBytes UsedSize: %llu KBytes FreeSize: %llu KBytes UsedRate: %llu", __FUNCTION__, __LINE__,spaceInfo->driveSize,spaceInfo->usedSize,spaceInfo->freeSize,spaceInfo->usedRate);
+    PDM_LOG_DEBUG("PdmFs:%s line: %d DriveSize : %" PRIu64 " KBytes UsedSize: %" PRIu64 " KBytes FreeSize: %" PRIu64 " KBytes UsedRate: %" PRIu64, __FUNCTION__, __LINE__,spaceInfo->driveSize,spaceInfo->usedSize,spaceInfo->freeSize,spaceInfo->usedRate);
     return true;
 
 
