@@ -41,7 +41,7 @@ void MTPDevice::setDeviceInfo(DeviceClass* devClass)
 
     if( mtpSubSystem->getDevType() == USB_DEVICE){
         if(!devClass->getSpeed().empty()) {
-            m_devSpeed = getDeviceSpeed(stoi(devClass->getSpeed()));
+            m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClass->getSpeed()));
         }
         driveName = mtpSubSystem->getDevLinks();
         if(!driveName.empty())

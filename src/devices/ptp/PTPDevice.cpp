@@ -90,15 +90,15 @@ void PTPDevice::setDeviceInfo(DeviceClass *devClass)
     {
         if (!devClass->getSpeed().empty())
         {
-            m_devSpeed = getDeviceSpeed(stoi(devClass->getSpeed()));
+            m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClass->getSpeed()));
         }
         if (!ptpSubsystem->getBusNum().empty())
         {
-            m_busNum = std::stoi(ptpSubsystem->getBusNum());
+            m_busNum = PdmUtils::toInt(ptpSubsystem->getBusNum());
         }
         if (!devClass->getDevNumber().empty())
         {
-            m_ptpDevNum = std::stoi(devClass->getDevNumber(), nullptr);
+            m_ptpDevNum = PdmUtils::toInt(devClass->getDevNumber());
         }
         Device::setDeviceInfo(devClass);
     }

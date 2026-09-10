@@ -12,6 +12,7 @@
 // LICENSE@@@
 
 
+#include "PdmUtils.h"
 #include "NfcDevice.h"
 #include "PdmLogUtils.h"
 #include "Common.h"
@@ -22,7 +23,7 @@ void NfcDevice::setDeviceInfo(DeviceClass* devClass)
 {
     if(devClass->getAction() == DEVICE_ADD ) {
         if (!devClass->getSpeed().empty()) {
-            m_devSpeed = getDeviceSpeed(stoi(devClass->getSpeed(), nullptr));
+            m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClass->getSpeed()));
         }
         Device::setDeviceInfo(devClass);
     }

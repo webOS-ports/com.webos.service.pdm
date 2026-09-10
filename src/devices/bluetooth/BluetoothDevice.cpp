@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "PdmUtils.h"
 #include "BluetoothDevice.h"
 #include "PdmLogUtils.h"
 
@@ -25,7 +26,7 @@ void BluetoothDevice::setDeviceInfo(DeviceClass* devClass)
     if(devClass->getAction() == DEVICE_ADD ){
         PDM_LOG_DEBUG("BluetoothDevice:%s line: %d setDeviceInfo: DEVICE_ADD", __FUNCTION__, __LINE__);
         if(!devClass->getSpeed().empty())
-            m_devSpeed = getDeviceSpeed(stoi(devClass->getSpeed(), nullptr));
+            m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClass->getSpeed()));
         Device::setDeviceInfo(devClass);
         /*m_deviceSubType will be modified once  requirement will be clear*/
         m_deviceSubType = devClass->getIdModel();

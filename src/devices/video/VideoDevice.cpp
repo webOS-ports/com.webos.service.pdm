@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "PdmUtils.h"
 #include "VideoDevice.h"
 #include "Common.h"
 #include "PdmLogUtils.h"
@@ -47,7 +48,7 @@ void VideoDevice::setDeviceInfo(DeviceClass* devClassPtr, bool isCameraReady)
     if(devClassPtr->getAction() == DEVICE_ADD ) {
         PDM_LOG_DEBUG("VideoDevice:%s line: %d setDeviceInfo: DEVICE_ADD", __FUNCTION__, __LINE__);
         if(!devClassPtr->getSpeed().empty()) {
-            m_devSpeed = getDeviceSpeed(stoi(devClassPtr->getSpeed(), nullptr));
+            m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClassPtr->getSpeed()));
         }
         if(!isCameraReady) {
             m_deviceType = DEV_TYPE_UNKNOWN;

@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "PdmUtils.h"
 #include "SoundDevice.h"
 #include "Common.h"
 #include "PdmLogUtils.h"
@@ -45,7 +46,7 @@ void SoundDevice::setDeviceInfo(DeviceClass* devClassPtr)
     PDM_LOG_DEBUG("SoundDevice:%s line: %d setDeviceInfo", __FUNCTION__, __LINE__);
     if(!(soundSubsystem->getSpeed()).empty()) {
         // m_devSpeed = getDeviceSpeed(stoi(soundSubsystem->getDevSpeed(),nullptr));
-        m_devSpeed = getDeviceSpeed(stoi(soundSubsystem->getSpeed()));
+        m_devSpeed = getDeviceSpeed(PdmUtils::toInt(soundSubsystem->getSpeed()));
     }
     PDM_LOG_DEBUG("SoundDevice:%s line: %d setDeviceInfo", __FUNCTION__, __LINE__);
     if(!soundSubsystem->getDevPath().empty()) {
@@ -72,7 +73,7 @@ void SoundDevice::updateDeviceInfo(DeviceClass* devClassPtr)
             m_soundDeviceName = soundSubsystem->getCardName();
 
         if(!soundSubsystem->getCardNumber().empty())
-            m_cardNumber = stoi(soundSubsystem->getCardNumber());
+            m_cardNumber = PdmUtils::toInt(soundSubsystem->getCardNumber());
 
         if(!(soundSubsystem->getCardId().empty()))
             m_cardId = soundSubsystem->getCardId();

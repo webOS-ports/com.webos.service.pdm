@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "PdmUtils.h"
 #include "CdcDevice.h"
 #include "Common.h"
 #include "PdmLogUtils.h"
@@ -44,7 +45,7 @@ void CdcDevice::setDeviceInfo(DeviceClass* devClass)
     PDM_LOG_DEBUG("CdcDevice:%s line: %d setDeviceInfo", __FUNCTION__, __LINE__);
     if( (devClass->getDevType() == USB_DEVICE) || (cdcSubsystem->getUsbModemId() == YES) ) {
         if(!devClass->getSpeed().empty())
-            m_devSpeed = getDeviceSpeed(stoi(devClass->getSpeed(), nullptr));
+            m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClass->getSpeed()));
         Device::setDeviceInfo(devClass);
         if ("1" == cdcSubsystem->getIdUsbSerial()){
             PDM_LOG_DEBUG("CdcDevice:%s line: %d It is USB to serial device", __FUNCTION__, __LINE__);

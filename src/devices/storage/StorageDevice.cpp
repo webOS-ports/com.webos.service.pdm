@@ -70,7 +70,7 @@ int StorageDevice::countPartitions(const std::string &devName)
     std::string sysCommand = "lsblk -n /dev/" + devName + " | grep -c part";
     std::string partitions = PdmUtils::execShellCmd(sysCommand);
     if(!partitions.empty()){
-        count = std::stoi(partitions);
+        count = PdmUtils::toInt(partitions);
     }
     return count;
 }
@@ -144,7 +144,7 @@ void StorageDevice::updateMultiSdCard(DeviceClass* devClass)
             std::size_t found = instance.find_first_of(":");
             std::string idInstance =instance.substr(found+1);
             if(!idInstance.empty()) {
-                int instanceNum = stoi(instance.substr(found+1));
+                int instanceNum = PdmUtils::toInt(instance.substr(found+1));
                 m_deviceNum += instanceNum;
             }
         }
@@ -158,7 +158,7 @@ void StorageDevice::updateDeviceInfo(DeviceClass* devClass)
     PDM_LOG_DEBUG("StorageDevice:%s line: %d DEVNAME: %s", __FUNCTION__, __LINE__, devClass->getDevNumber().c_str());
     Device::setDeviceInfo(devClass);
     if(!devClass->getSpeed().empty()) {
-        m_devSpeed = getDeviceSpeed(stoi(devClass->getSpeed()));
+        m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClass->getSpeed()));
     }
     if((!storageSubSystem->getIdBlackListedSuperSpeedDev().empty()) && (storageSubSystem->getIdBlackListedSuperSpeedDev() == YES) )
     {

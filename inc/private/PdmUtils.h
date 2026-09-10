@@ -34,6 +34,13 @@ namespace PdmUtils
     std::string& rtrimString(std::string &str);
     std::string& trimString(std::string &str);
     std::pair<std::string, std::string> splitStringInTwo(std::string stringToSplit);
+
+    /* std::stoi() throws on a string that does not start with a number and on
+     * one that does not fit an int. Every integer pdm parses comes from a udev
+     * property, i.e. from the device, and the parsing happens on the netlink
+     * listener and command threads where an escaping exception is
+     * std::terminate. Return defaultValue instead. */
+    int toInt(const std::string &str, int defaultValue = 0);
 };
 
 #endif //_PDM_UTILS_H

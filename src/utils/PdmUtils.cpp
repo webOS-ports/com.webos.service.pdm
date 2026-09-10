@@ -195,6 +195,20 @@ std::pair<std::string, std::string> PdmUtils::splitStringInTwo(std::string strin
     return make_pair(trimString(stringToSplit), trimString(splitString));
 }
 
+int PdmUtils::toInt(const std::string &str, int defaultValue)
+{
+    if (str.empty())
+        return defaultValue;
+
+    try {
+        return std::stoi(str, nullptr);
+    }
+    catch (const std::exception &error) {
+        PDM_LOG_WARNING("PdmUtils:%s line: %d not a number: \"%s\" (%s)", __FUNCTION__, __LINE__, str.c_str(), error.what());
+        return defaultValue;
+    }
+}
+
 unsigned int PdmUtils::getPIDbyName(const char *processName)
 {
     unsigned int pidValue = 0;
