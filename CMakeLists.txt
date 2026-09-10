@@ -20,7 +20,10 @@ include(webOS/webOS)
 webos_modules_init(1 0 0 QUALIFIER RC4)
 webos_component(1 0 1)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall")
+# C++17: googletest (1.17 in the sysroot) refuses to compile below it, and
+# std::result_of - used by PdmThreadPool - is deprecated in C++17 and gone in
+# C++20, so this is the step that lets that be fixed rather than worked around.
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
 # add include files
 include_directories(${CMAKE_SOURCE_DIR}/inc)

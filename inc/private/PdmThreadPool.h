@@ -32,6 +32,7 @@
 #include <future>
 #include <functional>
 #include <stdexcept>
+#include <type_traits>
 #include "PdmLogUtils.h"
 
 class PdmThreadPool {
@@ -47,7 +48,7 @@ public:
     PdmThreadPool(size_t);
     template<class F, class... Args>
     auto enqueue(F&& f, Args&&... args)
-        -> std::future<typename std::result_of<F(Args...)>::type>;
+        -> std::future<std::invoke_result_t<F, Args...>>;
     ~PdmThreadPool();
 
 };
@@ -83,9 +84,11 @@ inline PdmThreadPool::PdmThreadPool(size_t threads)
 
 template<class F, class... Args>
 auto PdmThreadPool::enqueue(F&& f, Args&&... args)
-    -> std::future<typename std::result_of<F(Args...)>::type>
+    -> std::future<std::invoke_result_t<F, Args...>>
 {
-    using return_type = typename std::result_of<F(Args...)>::type;
+    /* std::result_of, which this used, is deprecated in C++17 and removed in
+     * C++20. invoke_result is the replacement and means the same thing here. */
+    using return_type = std::invoke_result_t<F, Args...>;
 
     auto task = std::make_shared< std::packaged_task<return_type()> >(
             std::bind(std::forward<F>(f), std::forward<Args>(args)...)
