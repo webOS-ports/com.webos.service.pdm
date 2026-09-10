@@ -49,6 +49,11 @@ StorageDevice::StorageDevice(PdmConfig* const pConfObj, PluginAdapter* const plu
 
 StorageDevice::~StorageDevice() {
 
+    /* The connecting timeout holds a bare "this". If it is still pending when
+     * we go away it fires on freed memory, so drop it here as well as in
+     * storageDeviceFsckNotification(). */
+    cancelConnectingTimeout();
+
     try {
         deletePartitionData();
     }
@@ -270,6 +275,7 @@ void StorageDevice::setPartitionInfo(DeviceClass* devClass)
 						m_fsckThreadCount++;
 				   }
 				}
+				cancelConnectingTimeout();
 				m_timeoutId = g_timeout_add (PDM_STORAGE_DEVICE_CONNECTION_TIME,(GSourceFunc)notifyStorageConnecting, this);
 				}
 		}else{
@@ -282,12 +288,23 @@ void StorageDevice::setPartitionInfo(DeviceClass* devClass)
 	}
 }
 
+/* g_source_remove() on an id that has already gone logs a GLib critical, and
+ * once ids wrap it can take out an unrelated source, so only ever remove an id
+ * we still own and forget it immediately. */
+void StorageDevice::cancelConnectingTimeout()
+{
+    if(m_timeoutId != 0) {
+        g_source_remove(m_timeoutId);
+        m_timeoutId = 0;
+    }
+}
+
 void StorageDevice:: storageDeviceFsckNotification()
 {
     m_fsckThreadCount--;
     if(m_fsckThreadCount == 0 ) {
         storageDeviceNotification();
-        g_source_remove(m_timeoutId);
+        cancelConnectingTimeout();
     }
 }
 
@@ -327,8 +344,12 @@ void StorageDevice::storageDeviceNotification()
 
 bool StorageDevice::notifyStorageConnecting(StorageDevice *ptr)
 {
-    if(ptr)
+    if(ptr) {
+        /* Returning false destroys the source, so the id is dead from here on
+         * and must not be handed to g_source_remove() later. */
+        ptr->m_timeoutId = 0;
         ptr->m_storageDeviceHandlerCb(CONNECTING,nullptr);
+    }
     return false;
 }
 

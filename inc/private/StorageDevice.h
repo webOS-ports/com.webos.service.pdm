@@ -52,6 +52,7 @@ private:
     std::tuple <int,int,int> mHddDiskStats;
 
 private:
+   void cancelConnectingTimeout();
    int countPartitions(const std::string &devName);
    void deletePartitionData();
    void removeRootDir();
