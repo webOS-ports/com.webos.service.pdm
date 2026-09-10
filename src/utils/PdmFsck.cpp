@@ -50,21 +50,18 @@ PdmFsck::~PdmFsck()
 
 }
 
-PdmDevStatus PdmFsck::fsck(const std::string& fsckMode,const std::string driveType,const std::string partitionName)
+std::vector<std::string> PdmFsck::fsckCommand(const std::string& fsckMode,const std::string& driveType,const std::string& partitionName)
 {
-   PDM_LOG_DEBUG("PdmFsck: %s line: %d partitionName: %s, driveType: %s, fsckMode = %s", __FUNCTION__, __LINE__, partitionName.c_str(), driveType.c_str(),fsckMode.c_str());
+    const auto entry = fsckDriveTypeBinOptionMap.find(driveType);
+    if (entry == fsckDriveTypeBinOptionMap.end())
+        return {};
 
-    fsckBinOptionPair binOption = fsckDriveTypeBinOptionMap[driveType];
-    std::string fsckbin = binOption.first;
-     PDM_LOG_DEBUG("PdmFsck: %s line: %d fsckbin: %s ",__FUNCTION__,__LINE__,fsckbin.c_str());
+    const std::string fsckbin = entry->second.first;
+    if (fsckbin.empty())
+        return {};
 
-    if(fsckbin.empty())
-    {
-        PDM_LOG_ERROR("PdmFsck: %s  line: %d partitionName: %s is not avalible to FSCK!!\n",__FUNCTION__,__LINE__,partitionName.c_str());
-        return PdmDevStatus::PDM_DEV_FSCK_FAIL;
-    }
-    std::string fsckOption = binOption.second;
-    std::string Mode = getFsckMode(driveType,fsckMode);
+    const std::string fsckOption = entry->second.second;
+    const std::string Mode = getFsckMode(driveType, fsckMode);
 
     std::vector<std::string> sysCommand;
     if(fsckMode == PDM_FSCK_AUTO && driveType != PDM_DRV_TYPE_TNTFS && driveType != PDM_DRV_TYPE_TFAT){
@@ -77,7 +74,21 @@ PdmDevStatus PdmFsck::fsck(const std::string& fsckMode,const std::string driveTy
         sysCommand.push_back(arg);
     sysCommand.push_back("/dev/" + partitionName);
 
-    PDM_LOG_INFO("PdmFsck:",0,"%s line: %d] %s FSCK Mode, %s FSCK fsckOption, /dev/%s ", __FUNCTION__,__LINE__,Mode.c_str(), fsckOption.c_str(), partitionName.c_str());
+    return sysCommand;
+}
+
+PdmDevStatus PdmFsck::fsck(const std::string& fsckMode,const std::string driveType,const std::string partitionName)
+{
+   PDM_LOG_DEBUG("PdmFsck: %s line: %d partitionName: %s, driveType: %s, fsckMode = %s", __FUNCTION__, __LINE__, partitionName.c_str(), driveType.c_str(),fsckMode.c_str());
+
+    const std::vector<std::string> sysCommand = fsckCommand(fsckMode, driveType, partitionName);
+    if(sysCommand.empty())
+    {
+        PDM_LOG_ERROR("PdmFsck: %s  line: %d partitionName: %s is not avalible to FSCK!!\n",__FUNCTION__,__LINE__,partitionName.c_str());
+        return PdmDevStatus::PDM_DEV_FSCK_FAIL;
+    }
+
+    PDM_LOG_INFO("PdmFsck:",0,"%s line: %d] FSCK %s on /dev/%s ", __FUNCTION__,__LINE__,sysCommand.front().c_str(), partitionName.c_str());
     /* runCommand() returns the exit status, so the 1/2 and 124 (timeout)
      * comparisons below finally mean what they say - system() returned the
      * encoded wait status, in which an exit code of 1 arrives as 256. */

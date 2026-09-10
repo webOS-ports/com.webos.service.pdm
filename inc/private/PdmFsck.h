@@ -17,7 +17,9 @@
 #ifndef PDMFSCK_H_
 #define PDMFSCK_H_
 
+#include <string>
 #include <unordered_map>
+#include <vector>
 #include "PdmErrors.h"
 
 using fsckBinOptionPair = std::pair<std::string,std::string>;
@@ -35,6 +37,10 @@ public:
     PdmFsck();
     ~PdmFsck();
     PdmDevStatus fsck(const std::string& fsckMode,const std::string driveType,const std::string driveName);
+    /* argv for fsck'ing /dev/<partitionName>, empty if driveType has no fsck
+     * binary. Split out so the tests can pin the option ordering and the
+     * timeout wrapper without running a real fsck. */
+    std::vector<std::string> fsckCommand(const std::string& fsckMode,const std::string& driveType,const std::string& partitionName);
 
 
 };

@@ -20,6 +20,8 @@
 #include "DiskPartitionInfo.h"
 #include "PdmErrors.h"
 #include <sys/statfs.h>
+#include <string>
+#include <vector>
 
 typedef struct SpaceInfo {
     uint64_t driveSize;
@@ -44,6 +46,12 @@ public:
     bool mountPartition(DiskPartitionInfo &partition, const bool &readOnly);
     bool umount(DiskPartitionInfo &partition, const bool lazyUnmount) const;
     PdmDevStatus setVolumeLabel(DiskPartitionInfo *partition, const std::string &volLabel);
+    /* argv for relabelling /dev/<driveName>, empty if fsType is unsupported.
+     * Pure and stateless so the tests can assert that volLabel always lands in
+     * exactly one argv entry, whatever it contains. */
+    static std::vector<std::string> volumeLabelCommand(const std::string &fsType,
+                                                       const std::string &driveName,
+                                                       const std::string &volLabel);
     PdmDevStatus isWritable(DiskPartitionInfo *partition, bool &isWritable);
     bool isSupportedFileSystem(const std::string fsType, const std::string &storageType);
     bool isDriveBusy(DiskPartitionInfo &partition) const;
