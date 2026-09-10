@@ -77,8 +77,13 @@ add_subdirectory(snd-ctl)
 set(BIN_NAME physical-device-manager)
 
 file(GLOB_RECURSE SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
+list(REMOVE_ITEM SRC_FILES ${CMAKE_SOURCE_DIR}/src/PdmMain.cpp)
 
-add_executable(${BIN_NAME} ${SRC_FILES})
+# Everything but main() lives in a library so the unit tests can link the same
+# objects the daemon runs, rather than a second copy built with other flags.
+add_library(${BIN_NAME}-core STATIC ${SRC_FILES})
+
+add_executable(${BIN_NAME} ${CMAKE_SOURCE_DIR}/src/PdmMain.cpp)
 
 set(LIB_LIST
     ${UDEV_LDFLAGS}
@@ -94,7 +99,8 @@ set(LIB_LIST
     dl
    )
 
-target_link_libraries (${BIN_NAME} ${LIB_LIST})
+target_link_libraries (${BIN_NAME}-core ${LIB_LIST})
+target_link_libraries (${BIN_NAME} ${BIN_NAME}-core ${LIB_LIST})
 
 webos_include_install_paths()
 webos_build_db8_files()
@@ -104,3 +110,8 @@ install(FILES ${CMAKE_SOURCE_DIR}/files/rules/39-usb-auto-port.rules DESTINATION
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/files/rules/ DESTINATION ${WEBOS_INSTALL_SYSCONFDIR}/udev/rules.d/ FILES_MATCHING PATTERN "*.rules*" PATTERN ".*" EXCLUDE)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/files/icon/ DESTINATION ${WEBOS_INSTALL_DATADIR}/${CMAKE_PROJECT_NAME} FILES_MATCHING PATTERN "*.png*" PATTERN ".*" EXCLUDE)
 install(DIRECTORY "inc/public/" DESTINATION ${WEBOS_INSTALL_INCLUDEDIR} FILES_MATCHING PATTERN "*.h*" PATTERN ".*" EXCLUDE)
+
+# Unit tests. Off unless -DWEBOS_CONFIG_BUILD_TESTS=TRUE (or INSTALL_TESTS), so
+# an ordinary build is unaffected.
+webos_test_provider()
+add_subdirectory(tests)
