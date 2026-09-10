@@ -152,6 +152,7 @@ bool Notification::createAlertCallback(LSHandle * sh, LSMessage * message, void*
     const char *payload = LSMessageGetPayload(message);
     if(!payload) {
         PDM_LOG_ERROR("PdmLunaService:%s line: %d payloadMsg is empty ", __FUNCTION__, __LINE__);
+        LSMessageUnref(message);
         return false;
     }
 
@@ -259,6 +260,7 @@ bool Notification::getNotificationStateCallback(LSHandle * sh, LSMessage * messa
     payload = LSMessageGetPayload(message);
     if(!payload) {
         PDM_LOG_ERROR("PdmLunaService:%s line: %d payloadMsg is empty ", __FUNCTION__, __LINE__);
+        LSMessageUnref(message);
         return false;
     }
     pbnjson::JValue root = pbnjson::JDomParser::fromString(payload);
