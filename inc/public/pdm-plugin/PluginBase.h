@@ -33,28 +33,29 @@ public:
     PluginBase(Mananger *manager, LSHandle *lunaHandle):
                 m_Manager(manager), m_lunaHandle(lunaHandle) {}
 
-    virtual ~PluginBase() {
+    ~PluginBase() override {
         m_Manager = nullptr;
         m_lunaHandle = nullptr;
     }
 
-    virtual bool init() {
+    bool init() override {
         return true;
     }
 
-    virtual void deInit() {
+    void deInit() override {
         return;
     }
 
-    virtual int getDeviceNumber(IDevice &device) const {
+    int getDeviceNumber(IDevice &device) const override {
         return 0;
     }
 
-    virtual bool isUmoutBlocked(const std::string &path) {
+    bool isUmoutBlocked(const std::string &path) override {
         return true;
     }
 
-    virtual void notifyChange(int eventID, int eventType, IDevice* device) {
+    void notifyChange(const int &eventID, const int &eventType,
+                      IDevice* device = nullptr) override {
         return;
     }
 

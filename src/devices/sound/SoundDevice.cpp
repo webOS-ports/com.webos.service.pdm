@@ -80,7 +80,6 @@ void SoundDevice::updateDeviceInfo(DeviceClass* devClassPtr)
         SoundSubDevice* subDevice = getSubDevice(soundSubsystem->getDevName());
         PDM_LOG_DEBUG("SoundDevice:%s line: %d", __FUNCTION__, __LINE__);
         switch (sMapDeviceActions[soundSubsystem->getAction()]) {
-            PDM_LOG_DEBUG("SoundDevice:%s line: %d", __FUNCTION__, __LINE__);
                 case DeviceActions::USB_DEV_ADD:
                 PDM_LOG_DEBUG("SoundDevice:%s line: %d", __FUNCTION__, __LINE__);
                     if (!soundSubsystem->getDevName().empty()) {

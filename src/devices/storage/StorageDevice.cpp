@@ -95,8 +95,6 @@ void StorageDevice::setStorageInterfaceType(DeviceClass* devClass)
 
 void StorageDevice::setDeviceInfo(DeviceClass* devClass)
 {
-    StorageSubsystem* storageSubSystem = (StorageSubsystem*)devClass;
-
     if(triggerUevent()) {
         PDM_LOG_DEBUG("StorageDevice:%s line: %d ACTION: %s uevent triggered", __FUNCTION__, __LINE__, devClass->getAction().c_str());
         return;
