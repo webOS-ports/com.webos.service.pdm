@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <vector>
+
 #include "MTPDevice.h"
 #include "PdmLogUtils.h"
 #include "PdmUtils.h"
@@ -109,8 +111,9 @@ void MTPDevice::registerCallback(handlerCb mtpDeviceHandlerCb) {
 
 bool MTPDevice::unmountDevice() const {
 
-    std::string syscommand = FUSERMOUNT + mountName;
-    int32_t res = system(syscommand.c_str());
+    std::vector<std::string> syscommand = PdmUtils::splitArgs(FUSERMOUNT);
+    syscommand.push_back(mountName);
+    int32_t res = PdmUtils::runCommand(syscommand);
 
     if(res) {
         PDM_LOG_ERROR("MTPDevice:%s line: %d MTP device umount failed" , __FUNCTION__, __LINE__);
@@ -121,9 +124,11 @@ bool MTPDevice::unmountDevice() const {
 
 bool MTPDevice::mountDevice(const std::string &mtpDeviceName) {
 
-     std::string syscommand = MTP_MOUNT_COMMAND +"/dev/"+ mtpDeviceName + " " + mountName;
-     PDM_LOG_INFO("MTPDevice:",0,"%s line: %d MTP device mount CMD: %s", __FUNCTION__,__LINE__,syscommand.c_str());
-     int32_t res = system(syscommand.c_str());
+     std::vector<std::string> syscommand = PdmUtils::splitArgs(MTP_MOUNT_COMMAND);
+     syscommand.push_back("/dev/" + mtpDeviceName);
+     syscommand.push_back(mountName);
+     PDM_LOG_INFO("MTPDevice:",0,"%s line: %d MTP device mount: /dev/%s on %s", __FUNCTION__,__LINE__,mtpDeviceName.c_str(),mountName.c_str());
+     int32_t res = PdmUtils::runCommand(syscommand);
 
      if(res){
          PDM_LOG_ERROR("MTPDevice:%s line: %d MTP device mount failed res: %d, str: %s" , __FUNCTION__, __LINE__, res, strerror(errno));

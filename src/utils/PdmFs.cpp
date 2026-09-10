@@ -16,6 +16,7 @@
 
 #include <cinttypes>
 #include <experimental/filesystem>
+#include <vector>
 
 #include "Common.h"
 #include "DiskFormat.h"
@@ -162,27 +163,29 @@ PdmDevStatus PdmFs::setVolumeLabel(DiskPartitionInfo *partition, const std::stri
         partition->partitionUnLock();
         return PdmDevStatus::PDM_DEV_VOLUME_LABEL_EMPTY;
     }
-    std::string sysCommand = "";
+    std::vector<std::string> sysCommand;
     std::string fsType = partition->getFsType();
 
      PDM_LOG_DEBUG("PdmFs:%s line: %d File system type : %s", __FUNCTION__, __LINE__, fsType.c_str());
 
+    /* volLabel is whatever the caller of luna://com.webos.service.pdm/setVolumeLabel
+     * sent, so it goes in as a single argv entry and never near a shell. */
     if ( fsType == "tntfs" || fsType == "ntfs") {
-        sysCommand = "ntfslabel -f  /dev/" + driveName + " " + volLabel;
+        sysCommand = { "ntfslabel", "-f", "/dev/" + driveName, volLabel };
     } else if ( fsType == "vfat" || fsType == "tfat" ) {
-        sysCommand = "fatlabel -f -l "+ volLabel + " /dev/"+ driveName;
+        sysCommand = { "fatlabel", "-f", "-l", volLabel, "/dev/" + driveName };
     } else if ( fsType == "ext2" || fsType == "ext3" || fsType == "ext4" ) {
-        sysCommand = "e2label  /dev/" + driveName + " " + volLabel;
+        sysCommand = { "e2label", "/dev/" + driveName, volLabel };
     } else {
         partition->partitionUnLock();
         PDM_LOG_WARNING("PdmFs:%s line: %d Unsupporetd File system", __FUNCTION__, __LINE__);
         return PdmDevStatus::PDM_DEV_UNSUPPORTED_FS;
     }
-    PDM_LOG_INFO("PdmFs:",0,"%s line: %d System command to set label : %s", __FUNCTION__,__LINE__,sysCommand.c_str());
+    PDM_LOG_INFO("PdmFs:",0,"%s line: %d Setting label with %s on /dev/%s", __FUNCTION__,__LINE__,sysCommand.front().c_str(),driveName.c_str());
 
-    ret = system(sysCommand.c_str());
+    ret = PdmUtils::runCommand(sysCommand);
 
-    if (ret == -1 || ret == 127 ) {
+    if (ret != 0) {
         PDM_LOG_ERROR("PdmFs:%s line: %d Setting volume Label:%s failed", __FUNCTION__, __LINE__, volLabel.c_str());
         partition->partitionUnLock();
         return PdmDevStatus::PDM_DEV_SET_VOLUME_LABEL_FAIL;

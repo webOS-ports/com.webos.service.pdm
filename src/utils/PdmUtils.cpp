@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <array>
+#include <sstream>
 #include <experimental/filesystem>
 #include <memory>
 #include <stdexcept>
@@ -28,6 +29,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include <string.h>
 
@@ -207,6 +209,59 @@ int PdmUtils::toInt(const std::string &str, int defaultValue)
         PDM_LOG_WARNING("PdmUtils:%s line: %d not a number: \"%s\" (%s)", __FUNCTION__, __LINE__, str.c_str(), error.what());
         return defaultValue;
     }
+}
+
+std::vector<std::string> PdmUtils::splitArgs(const std::string &str)
+{
+    std::vector<std::string> args;
+    std::istringstream stream(str);
+    std::string arg;
+
+    while (stream >> arg)
+        args.push_back(arg);
+
+    return args;
+}
+
+int PdmUtils::runCommand(const std::vector<std::string> &argv)
+{
+    if (argv.empty() || argv.front().empty()) {
+        PDM_LOG_ERROR("PdmUtils:%s line: %d empty command", __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    /* Built before the fork: everything between fork() and execvp() has to be
+     * async-signal-safe, and pdm is multi-threaded. */
+    std::vector<char *> args;
+    args.reserve(argv.size() + 1);
+    for (const std::string &arg : argv)
+        args.push_back(const_cast<char *>(arg.c_str()));
+    args.push_back(nullptr);
+
+    const pid_t pid = fork();
+    if (pid < 0) {
+        PDM_LOG_ERROR("PdmUtils:%s line: %d fork failed: %s", __FUNCTION__, __LINE__, strerror(errno));
+        return -1;
+    }
+
+    if (pid == 0) {
+        execvp(args[0], args.data());
+        _exit(127);         /* same convention as a shell that cannot exec */
+    }
+
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            PDM_LOG_ERROR("PdmUtils:%s line: %d waitpid failed: %s", __FUNCTION__, __LINE__, strerror(errno));
+            return -1;
+        }
+    }
+
+    if (WIFEXITED(status))
+        return WEXITSTATUS(status);
+    if (WIFSIGNALED(status))
+        return 128 + WTERMSIG(status);
+    return -1;
 }
 
 unsigned int PdmUtils::getPIDbyName(const char *processName)

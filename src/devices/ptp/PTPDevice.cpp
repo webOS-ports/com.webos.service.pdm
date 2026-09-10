@@ -19,6 +19,8 @@
 #include <dirent.h>
 #include "PdmLogUtils.h"
 #include "PdmUtils.h"
+#include <vector>
+
 #include "PTPDevice.h"
 #include "PTPSubsystem.h"
 
@@ -120,12 +122,16 @@ PdmDevStatus PTPDevice::eject()
 
 bool PTPDevice::mountDevice()
 {
-    std::stringstream sysCommandStream;
-    sysCommandStream << PTP_MOUNT_COMMAND << " --port=usb:" << std::setfill('0')
-                     << std::setw(3) << m_busNum << "," << std::setfill('0')
-                     << std::setw(3) << m_ptpDevNum << " " << mountName;
+    std::ostringstream portStream;
+    portStream << "--port=usb:" << std::setfill('0')
+               << std::setw(3) << m_busNum << "," << std::setfill('0')
+               << std::setw(3) << m_ptpDevNum;
 
-    int res = system(sysCommandStream.str().c_str());
+    std::vector<std::string> sysCommand = PdmUtils::splitArgs(PTP_MOUNT_COMMAND);
+    sysCommand.push_back(portStream.str());
+    sysCommand.push_back(mountName);
+
+    int res = PdmUtils::runCommand(sysCommand);
     if (res)
     {
         PDM_LOG_ERROR("PTPDevice:%s line: %d PTP device mount failed %d ", __FUNCTION__, __LINE__, res);
@@ -146,8 +152,9 @@ bool PTPDevice::unmountDevice() const
     if (!isMounted)
         return true;
 
-    std::string sysCommand = FUSERMOUNT + mountName;
-    int32_t res = system(sysCommand.c_str());
+    std::vector<std::string> sysCommand = PdmUtils::splitArgs(FUSERMOUNT);
+    sysCommand.push_back(mountName);
+    int32_t res = PdmUtils::runCommand(sysCommand);
 
     if (res)
     {
