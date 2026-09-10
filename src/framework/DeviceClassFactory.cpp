@@ -19,6 +19,8 @@
 #include "Common.h"
 #include "PdmLogUtils.h"
 
+static const char *const DEFAULT_SUBSYSTEM = "default";
+
 DeviceClassFactory::DeviceClassFactory() {}
 
 DeviceClassFactory::~DeviceClassFactory() {}
@@ -43,6 +45,8 @@ void DeviceClassFactory::Deregister(std::string devType)
 void DeviceClassFactory::parseDevProps(struct udev_device* device, bool isPowerOnConnect)
 {
     mDevProMap.clear();
+    if (!device)
+        return;
     struct udev_list_entry *list_entry;
     udev_list_entry_foreach(list_entry, udev_device_get_properties_list_entry(device)){
         std::string name = udev_list_entry_get_name(list_entry);
@@ -70,25 +74,36 @@ void DeviceClassFactory::parseDevProps(struct udev_device* device, bool isPowerO
 DeviceClass* DeviceClassFactory::create(struct udev_device* device, bool isPowerOnConnect)
 {
     PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
+    if (!device) {
+        PDM_LOG_ERROR("DeviceClassFactory:%s line: %d no udev device", __FUNCTION__, __LINE__);
+        return nullptr;
+    }
+
     parseDevProps(device, isPowerOnConnect);
-    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
-    DeviceClass* subDevClasPtr;
 
-    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
-
+    /* DefaultSubSystem::create() accepts every device, so it has to stay out
+     * of the loop - mDevMap is unordered and if "default" came up before the
+     * subsystem that actually matches, every device would be classified as
+     * default. It is the fallback below, not a candidate. */
     for (auto const& dev : mDevMap) {
-        subDevClasPtr = mDevMap[dev.first](mDevProMap);
+        if (dev.first == DEFAULT_SUBSYSTEM)
+            continue;
+        DeviceClass* subDevClasPtr = dev.second(mDevProMap);
         if(subDevClasPtr) {
             return subDevClasPtr;
         }
     }
 
-    if (mDevMap.size() > 0) {
-        subDevClasPtr = mDevMap["default"](mDevProMap);
-        PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
+    /* mDevMap["default"] would default-construct an empty std::function for a
+     * factory that has not registered itself yet and then throw
+     * bad_function_call when invoked, so look it up first. */
+    const auto defaultDev = mDevMap.find(DEFAULT_SUBSYSTEM);
+    if (defaultDev == mDevMap.end()) {
+        PDM_LOG_WARNING("DeviceClassFactory:%s line: %d no default subsystem registered", __FUNCTION__, __LINE__);
+        return nullptr;
     }
 
-    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d", __FUNCTION__, __LINE__);
-	return subDevClasPtr;
+    PDM_LOG_DEBUG("DeviceClassFactory:%s line: %d mDevMap Siz: %zu", __FUNCTION__, __LINE__, mDevMap.size());
+    return defaultDev->second(mDevProMap);
 }
 
