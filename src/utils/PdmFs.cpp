@@ -250,8 +250,14 @@ bool PdmFs::calculateSpaceInfo(const std::string &mountName, SpaceInfo *spaceInf
         return false;
     }
 
-    spaceInfo->driveSize = ( fsInfo.f_blocks * (fsInfo.f_bsize / 1024) );
-    spaceInfo->freeSize  = ( fsInfo.f_bavail * (fsInfo.f_bsize / 1024) );
+    /* Divide last: f_bsize / 1024 truncates to zero on any filesystem with a
+     * block size below 1K (512 is common on FAT and on 512e media), which
+     * reported every size as 0. f_blocks and f_bavail are 64-bit here -
+     * _FILE_OFFSET_BITS=64 is set on all our targets - so the product does not
+     * overflow on 32-bit either. */
+    const uint64_t blockSize = static_cast<uint64_t>(fsInfo.f_bsize);
+    spaceInfo->driveSize = ( fsInfo.f_blocks * blockSize ) / 1024;
+    spaceInfo->freeSize  = ( fsInfo.f_bavail * blockSize ) / 1024;
 
      if (spaceInfo->driveSize > spaceInfo->freeSize)
          spaceInfo->usedSize = spaceInfo->driveSize - spaceInfo->freeSize;
