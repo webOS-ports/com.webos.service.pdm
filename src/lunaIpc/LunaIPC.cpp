@@ -60,8 +60,12 @@ bool LunaIPC::init(GMainLoop *mainLoop,CommandManager *pCommandManager)
 bool LunaIPC::deInit()
 {
     PDM_LOG_DEBUG("LunaIPC: %s line: %d", __FUNCTION__, __LINE__);
-    bool retVal = false;
-    retVal = mPdmService->deinit();
+    /* init() leaves mPdmService null if the allocation failed, and main()
+     * unwinds through deInit() on any later init error. */
+    if(!mPdmService)
+        return true;
+
+    bool retVal = mPdmService->deinit();
     if(retVal)
     {
         delete mPdmService;
@@ -86,5 +90,11 @@ void LunaIPC::getResumeDone() {
 #endif
 
 void LunaIPC::notifyDeviceChange(unsigned int eventType, const int &eventID, std::string hubPortPath) {
+    /* Device events can arrive from the netlink thread before LunaIPC::init()
+     * has run, and after deInit() has torn the service down. */
+    if(!mPdmService) {
+        PDM_LOG_WARNING("LunaIPC: %s line: %d no luna service, dropping event %d", __FUNCTION__, __LINE__, eventID);
+        return;
+    }
     mPdmService->notifySubscribers(eventType,eventID,std::move(hubPortPath));
 }
