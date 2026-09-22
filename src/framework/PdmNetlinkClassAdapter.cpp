@@ -48,11 +48,26 @@ void PdmNetlinkClassAdapter::handleEvent(struct udev_device* device, bool isPowe
         devClasPtr = DeviceClassFactory::getInstance().create(device, false);
     }
 
-    if (mCmdManager && devClasPtr) {
-        PDM_LOG_DEBUG("PdmNetlinkClassAdapter:%s line: %d", __FUNCTION__, __LINE__);
-        DeviceClassCommand *devClassCmd = new (std::nothrow) DeviceClassCommand(devClasPtr);
-        mCmdManager->sendCommand(devClassCmd);
+    if (!devClasPtr)
+        return;
+
+    /* DeviceClassCommand takes ownership of devClasPtr and CommandManager
+     * takes ownership of the command, so anything that stops us handing it
+     * over has to free it here. */
+    if (!mCmdManager) {
+        PDM_LOG_ERROR("PdmNetlinkClassAdapter:%s line: %d no command manager, dropping event", __FUNCTION__, __LINE__);
+        delete devClasPtr;
+        return;
     }
+
+    DeviceClassCommand *devClassCmd = new (std::nothrow) DeviceClassCommand(devClasPtr);
+    if (!devClassCmd) {
+        PDM_LOG_CRITICAL("PdmNetlinkClassAdapter:%s line: %d unable to create DeviceClassCommand", __FUNCTION__, __LINE__);
+        delete devClasPtr;
+        return;
+    }
+
+    mCmdManager->sendCommand(devClassCmd);
     PDM_LOG_DEBUG("PdmNetlinkClassAdapter:%s line: %d", __FUNCTION__, __LINE__);
 }
 

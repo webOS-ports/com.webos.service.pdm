@@ -24,7 +24,7 @@ using namespace PdmDevAttributes;
 bool MTPSubsystem::mIsObjRegistered = MTPSubsystem::RegisterSubSystem();
 
 MTPSubsystem::MTPSubsystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("mtp"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("mtp")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

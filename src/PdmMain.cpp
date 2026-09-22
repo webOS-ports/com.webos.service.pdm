@@ -36,6 +36,7 @@
 int main(int argc, char *argv[])
 {
 
+    int exitStatus = EXIT_SUCCESS;
     GMainLoop *mainLoop = nullptr;
     PluginAdapter *pluginAdapter = nullptr;
     PdmConfig* pConfObj = nullptr;
@@ -84,34 +85,31 @@ int main(int argc, char *argv[])
         
         PdmNetlinkManager::getInstance()->start(pCommandManager);
         g_main_loop_run(mainLoop);
+
+        PDM_LOG_INFO("PdmMain:",0,"main loop stopped, shutting down");
         DeviceNotification::getInstance()->deInit();
         LunaIPC::getInstance()->deInit();
         PdmNetlinkManager::getInstance()->stop();
         pluginAdapter->unloadPlugin();
-        throw std::runtime_error("g_main_loop_run stopped");
     } catch(std::exception& e) {
 
         PDM_LOG_ERROR("Exception occurred : %s", e.what());
-
-        if(pCommandManager)
-            delete pCommandManager;
-
-        if(pDevTracker)
-            delete pDevTracker;
-
-        if(pConfObj)
-           delete pConfObj;
-
-        if(pluginAdapter)
-            delete pluginAdapter;
-
-        if(pNotificationMgr)
-            delete pNotificationMgr;
-
-        if(mainLoop)
-            g_main_loop_unref(mainLoop);
-
+        /* Anything thrown above is a start-up failure. Reporting success made
+         * systemd's Restart=on-failure a no-op, so a pdm that could not read
+         * its config or register on the bus stayed down until reboot. */
+        exitStatus = EXIT_FAILURE;
     }
+
+    /* Reached on both the clean and the failed path, so anything constructed
+     * before the failure is still released. */
+    delete pCommandManager;
+    delete pDevTracker;
+    delete pConfObj;
+    delete pluginAdapter;
+    delete pNotificationMgr;
+    if(mainLoop)
+        g_main_loop_unref(mainLoop);
+
     pCommandManager = nullptr;
     pDevTracker = nullptr;
     pConfObj = nullptr;
@@ -119,5 +117,5 @@ int main(int argc, char *argv[])
     pNotificationMgr = nullptr;
     mainLoop = nullptr;
 
-    return EXIT_SUCCESS;
+    return exitStatus;
 } // main

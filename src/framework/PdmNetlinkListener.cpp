@@ -17,10 +17,12 @@
 #include <libudev.h>
 #include <stdarg.h>
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <unistd.h>
 
 #include <cstring>
 #include <thread>
+#include <cerrno>
 
 #include "PdmNetlinkListener.h"
 #include "PdmLogUtils.h"
@@ -31,14 +33,32 @@
 #define SUBSYSTEM "usb"
 
 
-struct udev* udev = nullptr;
-
-PdmNetlinkListener::PdmNetlinkListener(){
+PdmNetlinkListener::PdmNetlinkListener() : m_udev(nullptr), m_stopFd(-1) {
 }
 
 PdmNetlinkListener::~PdmNetlinkListener(){
-    udev_unref(udev);
+    stopListener();
+}
+
+
+bool PdmNetlinkListener::startListener(){
+    if (!init())
+        return false;
+    runListner();
+    return true;
+}
+
+/* Safe to call twice, and safe to call on a listener that never started:
+ * PdmNetlinkManager calls it on shutdown and the destructor calls it again. */
+bool PdmNetlinkListener::stopListener(){
     if (m_listenerThread.joinable()) {
+        /* Wake the thread out of epoll_wait() first. Unreferencing m_udev
+         * while it is still running would pull the monitor out from under it. */
+        if (m_stopFd >= 0) {
+            const uint64_t one = 1;
+            if (write(m_stopFd, &one, sizeof(one)) != sizeof(one))
+                PDM_LOG_ERROR("PdmNetlinkListener: %s line: %d cannot signal listener: %s", __FUNCTION__, __LINE__, strerror(errno));
+        }
         try {
             m_listenerThread.join();
         }
@@ -46,37 +66,46 @@ PdmNetlinkListener::~PdmNetlinkListener(){
             PDM_LOG_ERROR("PdmNetlinkListener: %s line: %d caught system_error: %s", __FUNCTION__, __LINE__, e.what());
         }
     }
-}
 
-
-bool PdmNetlinkListener::startListener(){
-    init();
-    runListner();
-    return true;
-}
-
-bool PdmNetlinkListener::stopListener(){
-    udev_unref(udev);
-    m_listenerThread.join();
+    if (m_stopFd >= 0) {
+        close(m_stopFd);
+        m_stopFd = -1;
+    }
+    if (m_udev) {
+        udev_unref(m_udev);
+        m_udev = nullptr;
+    }
     return true;
 }
 
 /*  To get the new udev instances
 */
-void PdmNetlinkListener::init(){
-    udev = udev_new();
-    if (!udev) {
-        fprintf(stderr, "udev_new() failed\n");
-        return ;
+bool PdmNetlinkListener::init(){
+    m_udev = udev_new();
+    if (!m_udev) {
+        PDM_LOG_CRITICAL("PdmNetlinkListener: %s line: %d udev_new() failed", __FUNCTION__, __LINE__);
+        return false;
     }
 
-    enumerate_devices(udev);
+    m_stopFd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (m_stopFd < 0) {
+        PDM_LOG_CRITICAL("PdmNetlinkListener: %s line: %d eventfd() failed: %s", __FUNCTION__, __LINE__, strerror(errno));
+        udev_unref(m_udev);
+        m_udev = nullptr;
+        return false;
+    }
 
+    enumerate_devices();
+    return true;
 }
 
-void PdmNetlinkListener::enumerate_devices(struct udev* udev)
+void PdmNetlinkListener::enumerate_devices()
 {
-    struct udev_enumerate* enumerate = udev_enumerate_new(udev);
+    struct udev_enumerate* enumerate = udev_enumerate_new(m_udev);
+    if (!enumerate) {
+        PDM_LOG_ERROR("PdmNetlinkListener: %s line: %d udev_enumerate_new() failed", __FUNCTION__, __LINE__);
+        return;
+    }
 
     udev_enumerate_add_match_subsystem(enumerate, SUBSYSTEM);
     udev_enumerate_add_match_subsystem(enumerate, "block");
@@ -93,7 +122,7 @@ void PdmNetlinkListener::enumerate_devices(struct udev* udev)
 
     udev_list_entry_foreach(entry, devices) {
         const char* path = udev_list_entry_get_name(entry);
-        struct udev_device* device = udev_device_new_from_syspath(udev, path);
+        struct udev_device* device = udev_device_new_from_syspath(m_udev, path);
         if (device != NULL) {
             PdmNetlinkClassAdapter::getInstance().handleEvent(device, true);
         }
@@ -108,13 +137,14 @@ void PdmNetlinkListener::threadStart(){
     int fd_ep;
     int fd_udev = -1;
     struct epoll_event ep_udev;
+    struct epoll_event ep_stop;
 
     fd_ep = epoll_create1(EPOLL_CLOEXEC);
     if (fd_ep < 0) {
         PDM_LOG_ERROR("PdmNetlinkListener: %s line: %d error creating epoll fd: %d", __FUNCTION__, __LINE__,fd_ep);
         goto out;
     }
-    monitor = udev_monitor_new_from_netlink(udev, "udev");
+    monitor = udev_monitor_new_from_netlink(m_udev, "udev");
     if (monitor == NULL) {
         PDM_LOG_ERROR("PdmNetlinkListener: %s line: %d no socket\n", __FUNCTION__, __LINE__);
         goto out;
@@ -145,21 +175,45 @@ void PdmNetlinkListener::threadStart(){
         goto out;
    }
 
+   memzero(&ep_stop, sizeof(struct epoll_event));
+   ep_stop.events = EPOLLIN;
+   ep_stop.data.fd = m_stopFd;
+   if (epoll_ctl(fd_ep, EPOLL_CTL_ADD, m_stopFd, &ep_stop) < 0) {
+        PDM_LOG_ERROR("PdmNetlinkListener: %s line: %d fail to add stop fd to epoll: %s", __FUNCTION__, __LINE__,strerror(errno));
+        goto out;
+   }
+
   for (;;) {
     int fdcount;
     struct epoll_event ev[4];
-    struct udev_device *device;
 
     fdcount = epoll_wait(fd_ep, ev, ARRAY_SIZE(ev), -1);
+    if (fdcount < 0) {
+        if (errno == EINTR)
+            continue;
+        PDM_LOG_ERROR("PdmNetlinkListener: %s line: %d epoll_wait failed: %s", __FUNCTION__, __LINE__, strerror(errno));
+        goto out;
+    }
 
     for (int i = 0; i < fdcount; i++) {
-        if (ev[i].data.fd == fd_udev && ev[i].events & EPOLLIN) {
-            device = udev_monitor_receive_device(monitor);
-			PdmNetlinkClassAdapter::getInstance().handleEvent(device, false);
+        if (!(ev[i].events & EPOLLIN))
+            continue;
+
+        if (ev[i].data.fd == m_stopFd) {
+            PDM_LOG_DEBUG("PdmNetlinkListener: %s line: %d stop requested", __FUNCTION__, __LINE__);
+            goto out;
+        }
+
+        if (ev[i].data.fd == fd_udev) {
+            /* NULL on a receive error, which is not the same as "no device". */
+            struct udev_device *device = udev_monitor_receive_device(monitor);
+            if (!device)
+                continue;
+            PdmNetlinkClassAdapter::getInstance().handleEvent(device, false);
             udev_device_unref(device);
-            }
         }
     }
+  }
 
    out:
        if (fd_ep >= 0)

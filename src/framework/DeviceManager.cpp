@@ -73,7 +73,7 @@ bool DeviceManager::createPdmdeviceList() {
 
 bool DeviceManager::HandlePdmDevice(DeviceClass *devClassPtr)
 {
-    if (!(devClassPtr->getIdBlackList()).empty() && std::stoi(devClassPtr->getIdBlackList(),nullptr)) {
+    if (PdmUtils::toInt(devClassPtr->getIdBlackList()) != 0) {
         PDM_LOG_DEBUG("Blacklist device detected");
         BlackListDeviceHandler blackListDeviceHandler(devClassPtr);
         return true;

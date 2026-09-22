@@ -152,7 +152,7 @@ bool PdmLunaService::init(GMainLoop *mainLoop) {
         PDM_LOG_ERROR("com.webos.service.pdm service registration failed");
         return false;
     }
-    PDM_LOG_DEBUG("mServiceHandle =%p", mServiceHandle);
+    PDM_LOG_DEBUG("mServiceHandle =%p", static_cast<void *>(mServiceHandle));
 
 #ifdef WEBOS_SESSION
     if (!queryForSession())

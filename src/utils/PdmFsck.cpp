@@ -14,7 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <vector>
+
 #include "PdmFsck.h"
+#include "PdmUtils.h"
 #include "StorageDevice.h"
 #include "PdmLogUtils.h"
 #include "Common.h"
@@ -62,15 +65,23 @@ PdmDevStatus PdmFsck::fsck(const std::string& fsckMode,const std::string driveTy
     }
     std::string fsckOption = binOption.second;
     std::string Mode = getFsckMode(driveType,fsckMode);
-    std::string sysCommand;
-    if(fsckMode == PDM_FSCK_AUTO && driveType != PDM_DRV_TYPE_TNTFS && driveType != PDM_DRV_TYPE_TFAT){
-            sysCommand = timeout + fsckbin + " " + Mode + " " + fsckOption + " /dev/" + partitionName;
-    }
-    else
-        sysCommand = fsckbin + " " + Mode + " " + fsckOption + " /dev/" + partitionName;
 
-    PDM_LOG_INFO("PdmFsck:",0,"%s line: %d] %s FSCK Mode, %s FSCK fsckOption, %s FSCK sysCommand ", __FUNCTION__,__LINE__,Mode.c_str(), fsckOption.c_str(), sysCommand.c_str());
-    int32_t result = system(sysCommand.c_str());
+    std::vector<std::string> sysCommand;
+    if(fsckMode == PDM_FSCK_AUTO && driveType != PDM_DRV_TYPE_TNTFS && driveType != PDM_DRV_TYPE_TFAT){
+            sysCommand = PdmUtils::splitArgs(timeout);
+    }
+    sysCommand.push_back(fsckbin);
+    for (const std::string &arg : PdmUtils::splitArgs(Mode))
+        sysCommand.push_back(arg);
+    for (const std::string &arg : PdmUtils::splitArgs(fsckOption))
+        sysCommand.push_back(arg);
+    sysCommand.push_back("/dev/" + partitionName);
+
+    PDM_LOG_INFO("PdmFsck:",0,"%s line: %d] %s FSCK Mode, %s FSCK fsckOption, /dev/%s ", __FUNCTION__,__LINE__,Mode.c_str(), fsckOption.c_str(), partitionName.c_str());
+    /* runCommand() returns the exit status, so the 1/2 and 124 (timeout)
+     * comparisons below finally mean what they say - system() returned the
+     * encoded wait status, in which an exit code of 1 arrives as 256. */
+    int32_t result = PdmUtils::runCommand(sysCommand);
     if (result == 1 || result == 2)
     {
         PDM_LOG_ERROR("PdmFsck: %s line: %d partitionName:%s FSCK fail !!\n",__FUNCTION__,__LINE__,partitionName.c_str());

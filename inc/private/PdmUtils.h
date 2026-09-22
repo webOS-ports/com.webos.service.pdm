@@ -18,6 +18,7 @@
 #define _PDM_UTILS_H
 
 #include <string>
+#include <vector>
 #include <sys/types.h>
 
 namespace PdmUtils
@@ -34,6 +35,24 @@ namespace PdmUtils
     std::string& rtrimString(std::string &str);
     std::string& trimString(std::string &str);
     std::pair<std::string, std::string> splitStringInTwo(std::string stringToSplit);
+
+    /* std::stoi() throws on a string that does not start with a number and on
+     * one that does not fit an int. Every integer pdm parses comes from a udev
+     * property, i.e. from the device, and the parsing happens on the netlink
+     * listener and command threads where an escaping exception is
+     * std::terminate. Return defaultValue instead. */
+    int toInt(const std::string &str, int defaultValue = 0);
+
+    /* Split a fixed command template such as "mkfs.ext4 -F " into argv words.
+     * For building an argument vector out of the command constants only -
+     * there is no quoting, so never feed it a value that came from outside. */
+    std::vector<std::string> splitArgs(const std::string &str);
+
+    /* Run argv[0] with argv as its arguments, without going through a shell,
+     * and wait for it. Returns the child's exit status, 128+signal if it was
+     * killed, or -1 if it could not be started or waited for. Note this is
+     * the exit status, not the encoded wait status system() hands back. */
+    int runCommand(const std::vector<std::string> &argv);
 };
 
 #endif //_PDM_UTILS_H

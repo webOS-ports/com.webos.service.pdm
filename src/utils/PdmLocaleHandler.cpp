@@ -56,7 +56,7 @@ bool PdmLocaleHandler::init()
 
 LSHandle * PdmLocaleHandler::getHandle()
 {
-    PDM_LOG_DEBUG("PdmLocaleHandler: %s line: %d m_Handle =%p", __FUNCTION__, __LINE__,m_Handle);
+    PDM_LOG_DEBUG("PdmLocaleHandler: %s line: %d m_Handle =%p", __FUNCTION__, __LINE__,static_cast<void *>(m_Handle));
     return m_Handle;
 }
 
@@ -103,6 +103,7 @@ bool PdmLocaleHandler::onSettingsServiceStateChanged(LSHandle * sh, LSMessage * 
     msgPayload = LSMessageGetPayload(message);
     if(!msgPayload) {
         PDM_LOG_ERROR("PdmLunaService:%s line: %d payloadMsg is empty ", __FUNCTION__, __LINE__);
+        LSMessageUnref(message);
         return false;
     }
 
@@ -140,6 +141,7 @@ bool PdmLocaleHandler::onLocaleInfoReceived(LSHandle * sh, LSMessage * message, 
     msgPayload = LSMessageGetPayload(message);
     if(!msgPayload) {
         PDM_LOG_ERROR("PdmLunaService:%s line: %d payloadMsg is empty ", __FUNCTION__, __LINE__);
+        LSMessageUnref(message);
         return false;
     }
 

@@ -27,7 +27,7 @@
 
 enum DeviceSpeed { FULL = 12, HIGH = 480, SUPER = 5000};
 
-enum DeviceActions {USB_DEV_ADD =0, USB_DEV_REMOVE, USB_DEV_CHANGE, USB_DEV_BIND};
+enum DeviceActions {USB_DEV_ADD =0, USB_DEV_REMOVE, USB_DEV_CHANGE, USB_DEV_BIND, USB_DEV_UNKNOWN};
 enum UsbDeviceTypes {TYPE_DEV_USB =0, TYPE_DEV_DISK, TYPE_DEV_PARTITION};
 
 // Map to associate storage device type with the UsbDeviceTypes enum values
@@ -38,12 +38,24 @@ static std::map<std::string, UsbDeviceTypes> sMapUsbDeviceType= {
 };
 
 // Map to associate device actions with the DeviceActions enum values
-static std::map<std::string, DeviceActions> sMapDeviceActions= {
+static const std::map<std::string, DeviceActions> sMapDeviceActions= {
     {"add",     USB_DEV_ADD},
     {"remove",  USB_DEV_REMOVE},
     {"change",  USB_DEV_CHANGE},
     {"bind",  USB_DEV_BIND}
 };
+
+/* udev emits plenty of actions we do not map - "unbind", "move", "online",
+ * "offline". sMapDeviceActions[action] inserts such an action and hands back
+ * a value-initialised DeviceActions, which is USB_DEV_ADD, so an unrelated
+ * uevent gets processed as a device arrival. Look it up without inserting and
+ * let the switch default handle what we do not recognise. The map is const so
+ * that operator[] is not reachable at all any more. */
+inline DeviceActions getDeviceAction(const std::string &action)
+{
+    const auto it = sMapDeviceActions.find(action);
+    return (it == sMapDeviceActions.end()) ? USB_DEV_UNKNOWN : it->second;
+}
 
 class Device : public IDevice {
 

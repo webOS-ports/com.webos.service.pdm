@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "PdmUtils.h"
 #include "HIDDevice.h"
 #include "Common.h"
 #include "PdmLogUtils.h"
@@ -29,7 +30,7 @@ void HIDDevice::setDeviceInfo(DeviceClass* devClass)
         Device::setDeviceInfo(devClass);
         if(devClass->getDevType() == USB_DEVICE ) {
             if(!devClass->getSpeed().empty()) {
-                m_devSpeed = getDeviceSpeed(stoi(devClass->getSpeed(), nullptr));
+                m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClass->getSpeed()));
             }
         } else if(hidSubsystem->getProcessed() == YES ) {
             mHidDeviceHandlerCb(ADD,nullptr);

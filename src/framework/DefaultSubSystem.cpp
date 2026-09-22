@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool DefaultSubSystem::mIsObjRegistered = DefaultSubSystem::RegisterSubSystem();
 
 DefaultSubSystem::DefaultSubSystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("default"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("default")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

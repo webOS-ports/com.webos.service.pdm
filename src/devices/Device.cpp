@@ -19,6 +19,7 @@
 #include <luna-service2/lunaservice.hpp>
 #include <luna-service2++/handle.hpp>
 
+#include "PdmUtils.h"
 #include "Device.h"
 #include "PdmLogUtils.h"
 #include "LunaIPC.h"
@@ -94,7 +95,7 @@ void Device::setDeviceInfo(DeviceClass* deviceClassEve)
     }
     PDM_LOG_DEBUG("Device:%s line:%d m_vendorName:%s", __FUNCTION__, __LINE__, m_vendorName.c_str());
     if(!deviceClassEve->getDevNumber().empty())
-        m_deviceNum = std::stoi(deviceClassEve->getDevNumber(),nullptr);
+        m_deviceNum = PdmUtils::toInt(deviceClassEve->getDevNumber());
 
 #ifdef WEBOS_SESSION
     if (!deviceClassEve->getDevName().empty()) {

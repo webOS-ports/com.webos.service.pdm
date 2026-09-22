@@ -14,7 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <cinttypes>
 #include <experimental/filesystem>
+#include <vector>
 
 #include "Common.h"
 #include "DiskFormat.h"
@@ -161,27 +163,29 @@ PdmDevStatus PdmFs::setVolumeLabel(DiskPartitionInfo *partition, const std::stri
         partition->partitionUnLock();
         return PdmDevStatus::PDM_DEV_VOLUME_LABEL_EMPTY;
     }
-    std::string sysCommand = "";
+    std::vector<std::string> sysCommand;
     std::string fsType = partition->getFsType();
 
      PDM_LOG_DEBUG("PdmFs:%s line: %d File system type : %s", __FUNCTION__, __LINE__, fsType.c_str());
 
+    /* volLabel is whatever the caller of luna://com.webos.service.pdm/setVolumeLabel
+     * sent, so it goes in as a single argv entry and never near a shell. */
     if ( fsType == "tntfs" || fsType == "ntfs") {
-        sysCommand = "ntfslabel -f  /dev/" + driveName + " " + volLabel;
+        sysCommand = { "ntfslabel", "-f", "/dev/" + driveName, volLabel };
     } else if ( fsType == "vfat" || fsType == "tfat" ) {
-        sysCommand = "fatlabel -f -l "+ volLabel + " /dev/"+ driveName;
+        sysCommand = { "fatlabel", "-f", "-l", volLabel, "/dev/" + driveName };
     } else if ( fsType == "ext2" || fsType == "ext3" || fsType == "ext4" ) {
-        sysCommand = "e2label  /dev/" + driveName + " " + volLabel;
+        sysCommand = { "e2label", "/dev/" + driveName, volLabel };
     } else {
         partition->partitionUnLock();
         PDM_LOG_WARNING("PdmFs:%s line: %d Unsupporetd File system", __FUNCTION__, __LINE__);
         return PdmDevStatus::PDM_DEV_UNSUPPORTED_FS;
     }
-    PDM_LOG_INFO("PdmFs:",0,"%s line: %d System command to set label : %s", __FUNCTION__,__LINE__,sysCommand.c_str());
+    PDM_LOG_INFO("PdmFs:",0,"%s line: %d Setting label with %s on /dev/%s", __FUNCTION__,__LINE__,sysCommand.front().c_str(),driveName.c_str());
 
-    ret = system(sysCommand.c_str());
+    ret = PdmUtils::runCommand(sysCommand);
 
-    if (ret == -1 || ret == 127 ) {
+    if (ret != 0) {
         PDM_LOG_ERROR("PdmFs:%s line: %d Setting volume Label:%s failed", __FUNCTION__, __LINE__, volLabel.c_str());
         partition->partitionUnLock();
         return PdmDevStatus::PDM_DEV_SET_VOLUME_LABEL_FAIL;
@@ -246,14 +250,20 @@ bool PdmFs::calculateSpaceInfo(const std::string &mountName, SpaceInfo *spaceInf
         return false;
     }
 
-    spaceInfo->driveSize = ( fsInfo.f_blocks * (fsInfo.f_bsize / 1024) );
-    spaceInfo->freeSize  = ( fsInfo.f_bavail * (fsInfo.f_bsize / 1024) );
+    /* Divide last: f_bsize / 1024 truncates to zero on any filesystem with a
+     * block size below 1K (512 is common on FAT and on 512e media), which
+     * reported every size as 0. f_blocks and f_bavail are 64-bit here -
+     * _FILE_OFFSET_BITS=64 is set on all our targets - so the product does not
+     * overflow on 32-bit either. */
+    const uint64_t blockSize = static_cast<uint64_t>(fsInfo.f_bsize);
+    spaceInfo->driveSize = ( fsInfo.f_blocks * blockSize ) / 1024;
+    spaceInfo->freeSize  = ( fsInfo.f_bavail * blockSize ) / 1024;
 
      if (spaceInfo->driveSize > spaceInfo->freeSize)
          spaceInfo->usedSize = spaceInfo->driveSize - spaceInfo->freeSize;
      if (spaceInfo->driveSize)
          spaceInfo->usedRate = spaceInfo->usedSize * 100 / spaceInfo->driveSize;
-    PDM_LOG_DEBUG("PdmFs:%s line: %d DriveSize : %llu KBytes UsedSize: %llu KBytes FreeSize: %llu KBytes UsedRate: %llu", __FUNCTION__, __LINE__,spaceInfo->driveSize,spaceInfo->usedSize,spaceInfo->freeSize,spaceInfo->usedRate);
+    PDM_LOG_DEBUG("PdmFs:%s line: %d DriveSize : %" PRIu64 " KBytes UsedSize: %" PRIu64 " KBytes FreeSize: %" PRIu64 " KBytes UsedRate: %" PRIu64, __FUNCTION__, __LINE__,spaceInfo->driveSize,spaceInfo->usedSize,spaceInfo->freeSize,spaceInfo->usedRate);
     return true;
 
 

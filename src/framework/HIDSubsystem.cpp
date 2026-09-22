@@ -24,7 +24,7 @@ using namespace PdmDevAttributes;
 bool HIDSubsystem::mIsObjRegistered = HIDSubsystem::RegisterSubSystem();
 
 HIDSubsystem::HIDSubsystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("input"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("input")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

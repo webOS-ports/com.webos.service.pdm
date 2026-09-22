@@ -49,6 +49,11 @@ StorageDevice::StorageDevice(PdmConfig* const pConfObj, PluginAdapter* const plu
 
 StorageDevice::~StorageDevice() {
 
+    /* The connecting timeout holds a bare "this". If it is still pending when
+     * we go away it fires on freed memory, so drop it here as well as in
+     * storageDeviceFsckNotification(). */
+    cancelConnectingTimeout();
+
     try {
         deletePartitionData();
     }
@@ -70,7 +75,7 @@ int StorageDevice::countPartitions(const std::string &devName)
     std::string sysCommand = "lsblk -n /dev/" + devName + " | grep -c part";
     std::string partitions = PdmUtils::execShellCmd(sysCommand);
     if(!partitions.empty()){
-        count = std::stoi(partitions);
+        count = PdmUtils::toInt(partitions);
     }
     return count;
 }
@@ -95,8 +100,6 @@ void StorageDevice::setStorageInterfaceType(DeviceClass* devClass)
 
 void StorageDevice::setDeviceInfo(DeviceClass* devClass)
 {
-    StorageSubsystem* storageSubSystem = (StorageSubsystem*)devClass;
-
     if(triggerUevent()) {
         PDM_LOG_DEBUG("StorageDevice:%s line: %d ACTION: %s uevent triggered", __FUNCTION__, __LINE__, devClass->getAction().c_str());
         return;
@@ -146,7 +149,7 @@ void StorageDevice::updateMultiSdCard(DeviceClass* devClass)
             std::size_t found = instance.find_first_of(":");
             std::string idInstance =instance.substr(found+1);
             if(!idInstance.empty()) {
-                int instanceNum = stoi(instance.substr(found+1));
+                int instanceNum = PdmUtils::toInt(instance.substr(found+1));
                 m_deviceNum += instanceNum;
             }
         }
@@ -160,7 +163,7 @@ void StorageDevice::updateDeviceInfo(DeviceClass* devClass)
     PDM_LOG_DEBUG("StorageDevice:%s line: %d DEVNAME: %s", __FUNCTION__, __LINE__, devClass->getDevNumber().c_str());
     Device::setDeviceInfo(devClass);
     if(!devClass->getSpeed().empty()) {
-        m_devSpeed = getDeviceSpeed(stoi(devClass->getSpeed()));
+        m_devSpeed = getDeviceSpeed(PdmUtils::toInt(devClass->getSpeed()));
     }
     if((!storageSubSystem->getIdBlackListedSuperSpeedDev().empty()) && (storageSubSystem->getIdBlackListedSuperSpeedDev() == YES) )
     {
@@ -174,7 +177,7 @@ void StorageDevice::updateDiskInfo(DeviceClass* devClass)
     StorageSubsystem* storageSubSystem = (StorageSubsystem*)devClass;
 
     PDM_LOG_DEBUG("StorageDevice:%s line: %d ACTION = %s", __FUNCTION__, __LINE__, devClass->getAction().c_str());
-    switch(sMapDeviceActions[devClass->getAction()])
+    switch(getDeviceAction(devClass->getAction()))
     {
         case DeviceActions::USB_DEV_ADD:
             m_deviceName = devClass->getDevName();
@@ -272,6 +275,7 @@ void StorageDevice::setPartitionInfo(DeviceClass* devClass)
 						m_fsckThreadCount++;
 				   }
 				}
+				cancelConnectingTimeout();
 				m_timeoutId = g_timeout_add (PDM_STORAGE_DEVICE_CONNECTION_TIME,(GSourceFunc)notifyStorageConnecting, this);
 				}
 		}else{
@@ -284,12 +288,23 @@ void StorageDevice::setPartitionInfo(DeviceClass* devClass)
 	}
 }
 
+/* g_source_remove() on an id that has already gone logs a GLib critical, and
+ * once ids wrap it can take out an unrelated source, so only ever remove an id
+ * we still own and forget it immediately. */
+void StorageDevice::cancelConnectingTimeout()
+{
+    if(m_timeoutId != 0) {
+        g_source_remove(m_timeoutId);
+        m_timeoutId = 0;
+    }
+}
+
 void StorageDevice:: storageDeviceFsckNotification()
 {
     m_fsckThreadCount--;
     if(m_fsckThreadCount == 0 ) {
         storageDeviceNotification();
-        g_source_remove(m_timeoutId);
+        cancelConnectingTimeout();
     }
 }
 
@@ -329,8 +344,12 @@ void StorageDevice::storageDeviceNotification()
 
 bool StorageDevice::notifyStorageConnecting(StorageDevice *ptr)
 {
-    if(ptr)
+    if(ptr) {
+        /* Returning false destroys the source, so the id is dead from here on
+         * and must not be handed to g_source_remove() later. */
+        ptr->m_timeoutId = 0;
         ptr->m_storageDeviceHandlerCb(CONNECTING,nullptr);
+    }
     return false;
 }
 

@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool VideoSubsystem::mIsObjRegistered = VideoSubsystem::RegisterSubSystem();
 
 VideoSubsystem::VideoSubsystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("video4linux"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("video4linux")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

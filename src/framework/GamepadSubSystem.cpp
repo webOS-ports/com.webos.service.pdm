@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool GamepadSubSystem::mIsObjRegistered = GamepadSubSystem::RegisterSubSystem();
 
 GamepadSubSystem::GamepadSubSystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("gamepad"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("gamepad")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

@@ -25,7 +25,7 @@ using namespace PdmDevAttributes;
 bool StorageSubsystem::mIsObjRegistered = StorageSubsystem::RegisterSubSystem();
 
 StorageSubsystem::StorageSubsystem(std::unordered_map<std::string, std::string>& devPropMap)
-	: mDevType("storage"), DeviceClass(devPropMap)
+	: DeviceClass(devPropMap), mDevType("storage")
 {
 	for (auto &prop : devPropMap)
 		mDevPropMap[prop.first] = prop.second;

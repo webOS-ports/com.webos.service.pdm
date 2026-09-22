@@ -25,16 +25,25 @@ class PdmNetlinkListener {
 
 private:
     std::thread m_listenerThread;
+    /* Owned by the listener, not a global: the monitor thread dereferences it
+     * for as long as it runs, so it may only be unreferenced after the join. */
+    struct udev* m_udev;
+    /* eventfd the monitor thread also waits on, so stopListener() can break it
+     * out of epoll_wait() instead of waiting forever for a uevent. */
+    int m_stopFd;
 public:
   PdmNetlinkListener();
   virtual ~PdmNetlinkListener();
   bool startListener();
   bool stopListener();
   virtual void onEvent(DeviceClass *deviceClassEvent) = 0;
+
+  PdmNetlinkListener(const PdmNetlinkListener&) = delete;
+  PdmNetlinkListener& operator=(const PdmNetlinkListener&) = delete;
 private:
-  void init();
+  bool init();
   void runListner();
   void threadStart();
-  void enumerate_devices(struct udev* udev);
+  void enumerate_devices();
 };
 #endif //_PDMNETLINKLISTENER_H

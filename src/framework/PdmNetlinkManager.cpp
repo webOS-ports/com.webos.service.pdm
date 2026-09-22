@@ -50,7 +50,12 @@ int PdmNetlinkManager::start(CommandManager *cmdManager)
 
 int PdmNetlinkManager::stop()
 {
-     if (m_handler->stop()) {
+    if (!m_handler)
+        return 0;
+
+    /* stop() returns true on success; the test used to be inverted, so a clean
+     * stop was logged as a failure and the handler was never freed. */
+    if (!m_handler->stop()) {
         PDM_LOG_CRITICAL("PdmNetlinkManager:%s line: %d Unable to stop NetlinkHandler", __FUNCTION__, __LINE__);
         return -1;
     }

@@ -39,8 +39,6 @@ VideoDeviceHandler::~VideoDeviceHandler() {
 
 bool VideoDeviceHandler::HandlerEvent(DeviceClass* devClass)
 {
-    VideoSubsystem *videoSubsystem = (VideoSubsystem *)devClass;
-
     PDM_LOG_DEBUG("VideoDeviceHandler::HandlerEvent");
     std::string interfaceClass = devClass->getInterfaceClass();
     if((interfaceClass.find(iClass) == std::string::npos) && (devClass->getAction() != "remove"))

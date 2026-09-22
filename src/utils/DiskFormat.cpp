@@ -17,7 +17,8 @@
 #include "DiskFormat.h"
 #include "Common.h"
 #include "PdmLogUtils.h"
-#include <cstdlib>
+#include "PdmUtils.h"
+#include <vector>
 
 DiskFormat::DiskFormat()
 {
@@ -39,17 +40,26 @@ PdmDevStatus DiskFormat::formatDrive(const std::string driveName,const std::stri
         return PdmDevStatus::PDM_DEV_UNSUPPORTED_FS;
     }
 
-    std::string syscommand(formatFsCommands[fsType]);
+    std::vector<std::string> syscommand = PdmUtils::splitArgs(it->second);
+    if (syscommand.empty()) {
+        PDM_LOG_ERROR("DiskFormat:%s line: %d no format command for %s", __FUNCTION__, __LINE__, fsType.c_str());
+        return PdmDevStatus::PDM_DEV_UNSUPPORTED_FS;
+    }
 
+    syscommand.push_back("/dev/" + driveName);
+
+    /* volumeLabel comes from the caller of luna://com.webos.service.pdm/format,
+     * so it is appended as its own argv entry rather than pasted into a
+     * command line. */
     if(!volumeLabel.empty())
     {
-        syscommand += " /dev/"+ driveName + volumeLabelOptions[fsType] + volumeLabel;
+        const std::vector<std::string> labelOption = PdmUtils::splitArgs(volumeLabelOptions[fsType]);
+        syscommand.insert(syscommand.end(), labelOption.begin(), labelOption.end());
+        syscommand.push_back(volumeLabel);
     }
-    else
-        syscommand += " /dev/"+ driveName;
 
-    PDM_LOG_INFO("DiskFormat:",0,"%s line: %d system command: %s", __FUNCTION__,__LINE__,syscommand.c_str());
-    int ret  = system(syscommand.c_str());
+    PDM_LOG_INFO("DiskFormat:",0,"%s line: %d formatting /dev/%s with %s", __FUNCTION__,__LINE__,driveName.c_str(),syscommand.front().c_str());
+    int ret  = PdmUtils::runCommand(syscommand);
     if (ret){
         PDM_LOG_ERROR("DiskFormat:%s line: %d Format failed", __FUNCTION__, __LINE__);
         return PdmDevStatus::PDM_DEV_FORMAT_FAIL;
