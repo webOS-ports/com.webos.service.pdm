@@ -27,15 +27,45 @@
 #include "StorageDevice.h"
 #include "DiskPartitionInfo.h"
 #include "PdmUtils.h"
-#include <sys/shm.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 PdmNotificationManager::PdmNotificationManager()
-     : IObserver(), m_powerState(true)
+     : IObserver(), m_powerState(true), m_sharedMemory(nullptr)
 {
     m_pLocHandler = PdmLocaleHandler::getInstance();
-    m_shmId = shmget(PDM_SHM_KEY, 256, 0640 | IPC_CREAT);
-    if (m_shmId == -1)
-        PDM_LOG_ERROR("shmget() is failed, error :%s", strerror(errno));
+
+    int shmFd = shm_open(PDM_SHM_NAME, O_CREAT | O_RDWR | O_CLOEXEC, 0640);
+    if (shmFd == -1) {
+        PDM_LOG_ERROR("shm_open() is failed, error :%s", strerror(errno));
+        return;
+    }
+
+    // shm_open() applies the umask to the mode it is given, and the reader
+    // needs the group bit, so set the mode explicitly
+    if (fchmod(shmFd, 0640) == -1)
+        PDM_LOG_ERROR("fchmod() is failed, error :%s", strerror(errno));
+
+    if (ftruncate(shmFd, PDM_SHM_SIZE) == -1) {
+        PDM_LOG_ERROR("ftruncate() is failed, error :%s", strerror(errno));
+        close(shmFd);
+        return;
+    }
+
+    void *mapping = mmap(nullptr, PDM_SHM_SIZE, PROT_READ | PROT_WRITE,
+                         MAP_SHARED, shmFd, 0);
+
+    // the mapping outlives the descriptor
+    close(shmFd);
+
+    if (mapping == MAP_FAILED) {
+        PDM_LOG_ERROR("mmap() is failed, error :%s", strerror(errno));
+        return;
+    }
+
+    m_sharedMemory = static_cast<char *>(mapping);
 }
 
 PdmNotificationManager::~PdmNotificationManager()
@@ -45,8 +75,15 @@ PdmNotificationManager::~PdmNotificationManager()
     for(auto handler : pDeviceHandlerList)
         handler->Unregister(this);
 
-    if (shmctl(m_shmId, IPC_RMID, NULL) == -1)
-        PDM_LOG_ERROR("shmctl() is failed, error :%s", strerror(errno));
+    if (m_sharedMemory != nullptr) {
+        if (munmap(m_sharedMemory, PDM_SHM_SIZE) == -1)
+            PDM_LOG_ERROR("munmap() is failed, error :%s", strerror(errno));
+
+        m_sharedMemory = nullptr;
+    }
+
+    if (shm_unlink(PDM_SHM_NAME) == -1)
+        PDM_LOG_ERROR("shm_unlink() is failed, error :%s", strerror(errno));
 }
 
 void PdmNotificationManager::attachObservers()
@@ -119,9 +156,7 @@ bool PdmNotificationManager::isToastRequired(int eventDeviceType)
 
 void PdmNotificationManager::sendAlertInfo(pdmEvent pEvent, pbnjson::JValue parameters)
 {
-    int shmId;
     unsigned int eventPid = 0;
-    char *sharedMemory;
     std::string payloadStr;
     pbnjson::JValue payload = pbnjson::Object();
     union sigval sv;
@@ -131,28 +166,28 @@ void PdmNotificationManager::sendAlertInfo(pdmEvent pEvent, pbnjson::JValue para
     payloadStr = payload.stringify().c_str();
     PDM_LOG_DEBUG("PdmNotificationManager:%s line: %d payload for signal handler: %s", __FUNCTION__, __LINE__, payload.stringify().c_str());
 
-    shmId = shmget(PDM_SHM_KEY, payloadStr.length(), 0);
-    if (shmId == -1) {
-        PDM_LOG_ERROR("shmget() is failed error :%s", strerror(errno));
+    if (m_sharedMemory == nullptr) {
+        PDM_LOG_ERROR("PdmNotificationManager:%s line: %d no shared memory to publish the event through", __FUNCTION__, __LINE__);
         return;
     }
 
-    sharedMemory = (char *)shmat(shmId, (void *)0, 0);
+    // the reader is told the length through the signal, so the payload does
+    // not have to be terminated - but it does have to fit
+    if (payloadStr.length() > PDM_SHM_SIZE) {
+        PDM_LOG_ERROR("PdmNotificationManager:%s line: %d payload of %d bytes does not fit in %d bytes of shared memory", __FUNCTION__, __LINE__, (int)payloadStr.length(), PDM_SHM_SIZE);
+        return;
+    }
 
-    if(sharedMemory != nullptr) {
+    memcpy(m_sharedMemory, payloadStr.c_str(), payloadStr.length());
 
-        memcpy(sharedMemory, payloadStr.c_str(), payloadStr.length());
-        shmdt(sharedMemory);
+    sv.sival_int = payloadStr.length();
 
-        sv.sival_int = payloadStr.length();
+    eventPid = PdmUtils::getPIDbyName("event-monitor");
+    PDM_LOG_DEBUG("PdmNotificationManager:%s line: %d  event-monitor process ID :%d", __FUNCTION__, __LINE__, eventPid);
 
-        eventPid = PdmUtils::getPIDbyName("event-monitor");
-        PDM_LOG_DEBUG("PdmNotificationManager:%s line: %d  event-monitor process ID :%d", __FUNCTION__, __LINE__, eventPid);
-
-        if (eventPid > 0) {
-            if (-1 == sigqueue(eventPid, SIGUSR2, sv))
-                PDM_LOG_ERROR("sigqueue is failed error :%s", strerror(errno));
-        }
+    if (eventPid > 0) {
+        if (-1 == sigqueue(eventPid, SIGUSR2, sv))
+            PDM_LOG_ERROR("sigqueue is failed error :%s", strerror(errno));
     }
 }
 
