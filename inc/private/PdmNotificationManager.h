@@ -21,14 +21,18 @@
 #include "DeviceNotification.h"
 #include "PdmLocaleHandler.h"
 
-#define PDM_SHM_KEY 45697
+// The event payload is published through a POSIX shared memory object and
+// announced with SIGUSR2; the size is the one the System V segment this
+// replaced was created with.
+#define PDM_SHM_NAME "/pdm-notification"
+#define PDM_SHM_SIZE 256
 
 class PdmNotificationManager :public IObserver
 {
     private:
         bool m_powerState;
         PdmLocaleHandler *m_pLocHandler;
-        int m_shmId;
+        char *m_sharedMemory;
         enum pdmEvent
         {
             CONNECTING_EVENT = 0,
