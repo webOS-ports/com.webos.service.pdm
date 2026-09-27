@@ -151,6 +151,21 @@ bool PdmFs::umount(DiskPartitionInfo &partition, const bool lazyUnmount) const
    return retValue;
 }
 
+/* volLabel is whatever the caller of luna://com.webos.service.pdm/setVolumeLabel
+ * sent, so it goes in as a single argv entry and never near a shell. */
+std::vector<std::string> PdmFs::volumeLabelCommand(const std::string &fsType,
+                                                   const std::string &driveName,
+                                                   const std::string &volLabel)
+{
+    if ( fsType == "tntfs" || fsType == "ntfs")
+        return { "ntfslabel", "-f", "/dev/" + driveName, volLabel };
+    if ( fsType == "vfat" || fsType == "tfat" )
+        return { "fatlabel", "-f", "-l", volLabel, "/dev/" + driveName };
+    if ( fsType == "ext2" || fsType == "ext3" || fsType == "ext4" )
+        return { "e2label", "/dev/" + driveName, volLabel };
+    return {};
+}
+
 PdmDevStatus PdmFs::setVolumeLabel(DiskPartitionInfo *partition, const std::string &volLabel)
 {
     int ret = -1;
@@ -163,20 +178,12 @@ PdmDevStatus PdmFs::setVolumeLabel(DiskPartitionInfo *partition, const std::stri
         partition->partitionUnLock();
         return PdmDevStatus::PDM_DEV_VOLUME_LABEL_EMPTY;
     }
-    std::vector<std::string> sysCommand;
     std::string fsType = partition->getFsType();
 
      PDM_LOG_DEBUG("PdmFs:%s line: %d File system type : %s", __FUNCTION__, __LINE__, fsType.c_str());
 
-    /* volLabel is whatever the caller of luna://com.webos.service.pdm/setVolumeLabel
-     * sent, so it goes in as a single argv entry and never near a shell. */
-    if ( fsType == "tntfs" || fsType == "ntfs") {
-        sysCommand = { "ntfslabel", "-f", "/dev/" + driveName, volLabel };
-    } else if ( fsType == "vfat" || fsType == "tfat" ) {
-        sysCommand = { "fatlabel", "-f", "-l", volLabel, "/dev/" + driveName };
-    } else if ( fsType == "ext2" || fsType == "ext3" || fsType == "ext4" ) {
-        sysCommand = { "e2label", "/dev/" + driveName, volLabel };
-    } else {
+    const std::vector<std::string> sysCommand = volumeLabelCommand(fsType, driveName, volLabel);
+    if (sysCommand.empty()) {
         partition->partitionUnLock();
         PDM_LOG_WARNING("PdmFs:%s line: %d Unsupporetd File system", __FUNCTION__, __LINE__);
         return PdmDevStatus::PDM_DEV_UNSUPPORTED_FS;

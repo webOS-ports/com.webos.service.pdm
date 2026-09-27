@@ -30,32 +30,41 @@ DiskFormat::~DiskFormat()
 }
 
 
-PdmDevStatus DiskFormat::formatDrive(const std::string driveName,const std::string fsType,const std::string &volumeLabel)
- {
-    PDM_LOG_INFO("DiskFormat:",0,"%s line: %d driveName:%s,fsType:%s,volumeLabel:%s ", __FUNCTION__,__LINE__,driveName.c_str(),fsType.c_str(),volumeLabel.c_str());
-    std::unordered_map<std::string,std::string>::iterator it;
-    it = formatFsCommands.find(fsType);
-    if (it == formatFsCommands.end()) {
-        PDM_LOG_ERROR("DiskFormat:%s line: %d error on getFsType", __FUNCTION__, __LINE__);
-        return PdmDevStatus::PDM_DEV_UNSUPPORTED_FS;
-    }
+/* volumeLabel comes from the caller of luna://com.webos.service.pdm/format, so
+ * it is appended as its own argv entry rather than pasted into a command line. */
+std::vector<std::string> DiskFormat::formatCommand(const std::string &driveName,const std::string &fsType,const std::string &volumeLabel)
+{
+    const auto it = formatFsCommands.find(fsType);
+    if (it == formatFsCommands.end())
+        return {};
 
     std::vector<std::string> syscommand = PdmUtils::splitArgs(it->second);
-    if (syscommand.empty()) {
-        PDM_LOG_ERROR("DiskFormat:%s line: %d no format command for %s", __FUNCTION__, __LINE__, fsType.c_str());
-        return PdmDevStatus::PDM_DEV_UNSUPPORTED_FS;
-    }
+    if (syscommand.empty())
+        return {};
 
     syscommand.push_back("/dev/" + driveName);
 
-    /* volumeLabel comes from the caller of luna://com.webos.service.pdm/format,
-     * so it is appended as its own argv entry rather than pasted into a
-     * command line. */
     if(!volumeLabel.empty())
     {
-        const std::vector<std::string> labelOption = PdmUtils::splitArgs(volumeLabelOptions[fsType]);
-        syscommand.insert(syscommand.end(), labelOption.begin(), labelOption.end());
+        const auto option = volumeLabelOptions.find(fsType);
+        if (option != volumeLabelOptions.end()) {
+            const std::vector<std::string> labelOption = PdmUtils::splitArgs(option->second);
+            syscommand.insert(syscommand.end(), labelOption.begin(), labelOption.end());
+        }
         syscommand.push_back(volumeLabel);
+    }
+
+    return syscommand;
+}
+
+PdmDevStatus DiskFormat::formatDrive(const std::string driveName,const std::string fsType,const std::string &volumeLabel)
+ {
+    PDM_LOG_INFO("DiskFormat:",0,"%s line: %d driveName:%s,fsType:%s,volumeLabel:%s ", __FUNCTION__,__LINE__,driveName.c_str(),fsType.c_str(),volumeLabel.c_str());
+
+    const std::vector<std::string> syscommand = formatCommand(driveName, fsType, volumeLabel);
+    if (syscommand.empty()) {
+        PDM_LOG_ERROR("DiskFormat:%s line: %d no format command for %s", __FUNCTION__, __LINE__, fsType.c_str());
+        return PdmDevStatus::PDM_DEV_UNSUPPORTED_FS;
     }
 
     PDM_LOG_INFO("DiskFormat:",0,"%s line: %d formatting /dev/%s with %s", __FUNCTION__,__LINE__,driveName.c_str(),syscommand.front().c_str());

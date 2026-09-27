@@ -20,6 +20,7 @@
 #include <string>
 #include <array>
 #include <unordered_map>
+#include <vector>
 #include "PdmErrors.h"
 #include "Common.h"
 
@@ -58,6 +59,10 @@ public:
    ~DiskFormat();
 
    PdmDevStatus formatDrive(const std::string driveName,const std::string fsType,const std::string &volumeLabel);
+   /* argv for the mkfs of fsType on /dev/<driveName>, empty if fsType has no
+    * format command. Split out so the tests can assert that volumeLabel stays
+    * one argv entry whatever it contains. */
+   std::vector<std::string> formatCommand(const std::string &driveName,const std::string &fsType,const std::string &volumeLabel);
 };
 
 #endif //DISKFORMAT_H_
