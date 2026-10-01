@@ -100,7 +100,7 @@ set(LIB_LIST
    )
 
 target_link_libraries (${BIN_NAME}-core ${LIB_LIST})
-target_link_libraries (${BIN_NAME} ${BIN_NAME}-core ${LIB_LIST})
+target_link_libraries (${BIN_NAME} -Wl,--whole-archive ${BIN_NAME}-core -Wl,--no-whole-archive ${LIB_LIST})
 
 webos_include_install_paths()
 webos_build_db8_files()
